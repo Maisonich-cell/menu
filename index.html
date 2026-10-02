@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Меню">
+<title>Моё меню</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:#F2F2F7;color:#000;padding-bottom:calc(90px + env(safe-area-inset-bottom));-webkit-font-smoothing:antialiased}
+.header{background:rgba(255,255,255,.96);padding:calc(16px + env(safe-area-inset-top)) 16px 12px;position:sticky;top:0;z-index:10;border-bottom:.5px solid #E5E5EA}
+.header h1{margin:0 0 2px;font-size:26px;font-weight:700;letter-spacing:-.5px}
+.header .subtitle{font-size:13px;color:#8E8E93;margin-bottom:12px}
+.search{width:100%;padding:10px 14px;border-radius:11px;border:none;background:#E5E5EA;font-size:16px;outline:none;font-family:inherit;color:#000}
+.search::placeholder{color:#8E8E93}
+.tabs{display:flex;gap:8px;margin-top:12px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:7px 14px;border-radius:18px;font-size:14px;font-weight:500;background:#E5E5EA;color:#000;white-space:nowrap;cursor:pointer;user-select:none}
+.tab.active{background:#007AFF;color:#fff}
+.section-title{padding:18px 20px 6px;font-size:12px;font-weight:700;color:#8E8E93;text-transform:uppercase;letter-spacing:.6px}
+.card{margin:0 16px 10px;background:#fff;border-radius:16px;padding:14px 16px;display:flex;align-items:flex-start;gap:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);cursor:pointer}
+.card:active{transform:scale(.98)}
+.card .emoji{font-size:36px;line-height:1;flex-shrink:0}
+.card .info{flex:1;min-width:0}
+.card .name{font-size:17px;font-weight:600;margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .meta{font-size:13px;color:#8E8E93}
+.card.ready .name{color:#FF3B30}
+.card.soon .name{color:#FF9500}
+.card.later .name{color:#34C759}
+.tags{margin-top:6px}
+.tag{display:inline-block;padding:3px 9px;border-radius:9px;background:#E5E5EA;color:#555;font-size:12px;margin-right:5px;margin-bottom:4px}
+.chev{color:#C7C7CC;font-size:22px;flex-shrink:0;align-self:center}
+.empty{text-align:center;padding:80px 20px;color:#8E8E93;font-size:15px}
+.fab{position:fixed;right:20px;bottom:calc(24px + env(safe-area-inset-bottom));width:58px;height:58px;border-radius:29px;background:#007AFF;color:#fff;font-size:32px;line-height:56px;text-align:center;border:none;box-shadow:0 4px 14px rgba(0,122,255,.45);cursor:pointer;z-index:50}
+.fab:active{transform:scale(.9)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:none;align-items:flex-end;z-index:100}
+.modal-bg.open{display:flex}
+.modal{background:#fff;width:100%;border-radius:20px 20px 0 0;padding:20px 20px calc(20px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUp .28s cubic-bezier(.2,.9,.3,1)}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal h2{margin:0 0 6px;font-size:23px;font-weight:700;letter-spacing:-.3px}
+.modal-sub{color:#8E8E93;font-size:14px;margin-bottom:16px;line-height:1.5}
+.recipe{background:#F2F2F7;border-radius:12px;padding:14px;font-size:15px;line-height:1.55;white-space:pre-wrap;margin-bottom:16px;word-break:break-word}
+.btn{display:block;width:100%;padding:15px;border-radius:13px;border:none;font-size:17px;font-weight:600;margin-bottom:8px;cursor:pointer;text-align:center;font-family:inherit}
+.btn:active{opacity:.7}
+.btn-green{background:#34C759;color:#fff}
+.btn-orange{background:#FF9500;color:#fff}
+.btn-blue{background:#007AFF;color:#fff}
+.btn-red{background:#FF3B30;color:#fff}
+.btn-gray{background:#E5E5EA;color:#007AFF}
+.form-label{display:block;font-size:12px;font-weight:600;color:#8E8E93;text-transform:uppercase;letter-spacing:.5px;margin:16px 0 6px}
+.form-input,.form-textarea{width:100%;padding:13px;border-radius:12px;border:1.5px solid #E5E5EA;font-size:16px;font-family:inherit;outline:none;background:#fff;color:#000}
+.form-input:focus,.form-textarea:focus{border-color:#007AFF}
+.form-textarea{min-height:140px;line-height:1.5;resize:vertical}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🍽 Моё меню</h1>
+  <div class="subtitle" id="subtitle">Загрузка…</div>
+  <input class="search" id="search" placeholder="Поиск по названию или категории...">
+  <div class="tabs" id="tabs">
+    <div class="tab active" data-f="all">Все</div>
+    <div class="tab" data-f="ready">Пора готовить</div>
+    <div class="tab" data-f="soon">Скоро</div>
+    <div class="tab" data-f="later">В запасе</div>
+  </div>
+</div>
+<div id="list"></div>
+<button class="fab" id="fab">+</button>
+<div class="modal-bg" id="modalBg"><div class="modal" id="modal"></div></div>
+
+<script>
+var STORAGE_KEY = 'menu_dishes_v1';
+var dishes = [];
+var searchQ = '';
+var filterKey = 'all';
+
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+function fmtDate(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()); }
+function parseDate(s){ var p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
+function today(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
+function fmtRu(d){ var m = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек']; return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear(); }
+function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function load(){
+  try {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { dishes = JSON.parse(raw); return; }
+  } catch(e) {}
+  dishes = [
+    { name:'Тушеная картошка', recipe:'100 мл масла, 500 г говядины, 3 моркови, 4-5 зубчиков чеснока, 1 лук, 1 ст.л. муки, 200 мл холодной воды + 400 мл горячей, 3 картошки, 1 стакан горошка. Соль, перец, тимьян.', interval:36, history:['2026-09-01'], postponedDate:null, tags:['Мясо','Гарнир'], link:'' },
+    { name:'Борщ', recipe:'Свекла, капуста, мясо, картошка, лук, морковь, томатная паста.', interval:14, history:['2026-09-20','2026-09-30'], postponedDate:null, tags:['Суп'], link:'' }
+  ];
+  save();
+}
+function save(){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(dishes)); } catch(e) {} }
+
+function avgInterval(d){
+  if (!d.history || d.history.length < 2) return d.interval || 30;
+  var s = d.history.slice().sort();
+  var t = 0;
+  for (var i = 1; i < s.length; i++) t += Math.round(Math.abs(parseDate(s[i]) - parseDate(s[i-1])) / 86400000);
+  return Math.round(t / (s.length - 1));
+}
+function nextDate(d){
+  if (d.postponedDate) return parseDate(d.postponedDate);
+  if (!d.history || d.history.length === 0) return new Date();
+  var s = d.history.slice().sort();
+  var l = parseDate(s[s.length - 1]);
+  var n = new Date(l);
+  n.setDate(n.getDate() + avgInterval(d));
+  return n;
+}
+function statusOf(d){
+  var n = nextDate(d); n.setHours(0,0,0,0);
+  var diff = Math.round((n - today()) / 86400000);
+  if (diff <= 0) return { key:'ready', text: diff < 0 ? 'Пора готовить · ' + Math.abs(diff) + ' дн. назад' : 'Пора готовить!' };
+  if (diff === 1) return { key:'soon', text:'Завтра' };
+  if (diff <= 3) return { key:'soon', text:'Через ' + diff + ' дн.' };
+  return { key:'later', text:'Через ' + diff + ' дн.' };
+}
+function getEmoji(name){
+  var n = name.toLowerCase();
+  if (n.indexOf('индей') >= 0) return '🦃';
+  if (n.indexOf('картош') >= 0 || n.indexOf('пюре') >= 0) return '🥔';
+  if (n.indexOf('борщ') >= 0 || n.indexOf('суп') >= 0 || n.indexOf('щи') >= 0 || n.indexOf('бульон') >= 0 || n.indexOf('уха') >= 0 || n.indexOf('солян') >= 0) return '🍲';
+  if (n.indexOf('каш') >= 0 || n.indexOf('пшен') >= 0 || n.indexOf('греч') >= 0 || n.indexOf('овсян') >= 0 || n.indexOf('манн') >= 0) return '🥣';
+  if (n.indexOf('паст') >= 0 || n.indexOf('спагет') >= 0 || n.indexOf('макарон') >= 0 || n.indexOf('лапш') >= 0) return '🍝';
+  if (n.indexOf('котлет') >= 0 || n.indexOf('мяс') >= 0 || n.indexOf('говядин') >= 0 || n.indexOf('свинин') >= 0 || n.indexOf('куриц') >= 0 || n.indexOf('птиц') >= 0 || n.indexOf('шашлык') >= 0 || n.indexOf('стейк') >= 0) return '🥩';
+  if (n.indexOf('салат') >= 0 || n.indexOf('винегрет') >= 0) return '🥗';
+  if (n.indexOf('рыб') >= 0 || n.indexOf('треск') >= 0 || n.indexOf('селед') >= 0 || n.indexOf('лосос') >= 0 || n.indexOf('сельд') >= 0 || n.indexOf('тунец') >= 0) return '🐟';
+  if (n.indexOf('пирог') >= 0 || n.indexOf('булоч') >= 0 || n.indexOf('выпеч') >= 0 || n.indexOf('торт') >= 0 || n.indexOf('кекс') >= 0 || n.indexOf('печень') >= 0) return '🥐';
+  if (n.indexOf('блин') >= 0 || n.indexOf('оладь') >= 0 || n.indexOf('сырник') >= 0 || n.indexOf('драник') >= 0) return '🥞';
+  if (n.indexOf('рагу') >= 0 || n.indexOf('рататуй') >= 0 || n.indexOf('овощ') >= 0 || n.indexOf('запекан') >= 0) return '🥘';
+  if (n.indexOf('яйц') >= 0 || n.indexOf('омлет') >= 0 || n.indexOf('яичн') >= 0) return '🍳';
+  if (n.indexOf('сыр') >= 0 || n.indexOf('творог') >= 0) return '🧀';
+  if (n.indexOf('пельмен') >= 0 || n.indexOf('вареник') >= 0 || n.indexOf('мант') >= 0) return '🥟';
+  if (n.indexOf('плов') >= 0) return '🍚';
+  return '🍽';
+}
+
+function render(){
+  document.getElementById('subtitle').textContent = dishes.length + ' блюд · ' + fmtRu(new Date());
+  var items = dishes.slice();
+  if (searchQ) {
+    var q = searchQ.toLowerCase();
+    items = items.filter(function(d){ return d.name.toLowerCase().indexOf(q) >= 0 || (d.tags||[]).join(' ').toLowerCase().indexOf(q) >= 0; });
+  }
+  items.sort(function(a,b){ return nextDate(a) - nextDate(b); });
+  if (filterKey !== 'all') items = items.filter(function(d){ return statusOf(d).key === filterKey; });
+  var groups = { ready:[], soon:[], later:[] };
+  items.forEach(function(d){ groups[statusOf(d).key].push(d); });
+  var titles = { ready:'🔴  ПОРА ГОТОВИТЬ', soon:'🟡  СКОРО', later:'🟢  В ЗАПАСЕ' };
+  var h = '';
+  ['ready','soon','later'].forEach(function(k){
+    if (!groups[k].length) return;
+    if (filterKey === 'all') h += '<div class="section-title">' + titles[k] + '</div>';
+    groups[k].forEach(function(d){
+      var i = dishes.indexOf(d);
+      var st = statusOf(d);
+      var tagsHtml = (d.tags||[]).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+      h += '<div class="card ' + st.key + '" data-idx="' + i + '">' +
+        '<div class="emoji">' + getEmoji(d.name) + '</div>' +
+        '<div class="info">' +
+          '<div class="name">' + esc(d.name) + '</div>' +
+          '<div class="meta">' + st.text + ' · ср. ' + avgInterval(d) + ' дн.</div>' +
+          (tagsHtml ? '<div class="tags">' + tagsHtml + '</div>' : '') +
+        '</div>' +
+        '<div class="chev">›</div>' +
+      '</div>';
+    });
+  });
+  if (!items.length) h = '<div class="empty">Ничего не найдено</div>';
+  document.getElementById('list').innerHTML = h;
+  var cards = document.querySelectorAll('.card');
+  for (var i = 0; i < cards.length; i++) {
+    (function(el){
+      el.addEventListener('click', function(){ openDish(+el.getAttribute('data-idx')); });
+    })(cards[i]);
+  }
+}
+
+function openDish(idx){
+  var d = dishes[idx];
+  var st = statusOf(d);
+  var n = nextDate(d);
+  var tagsHtml = (d.tags||[]).map(function(t){ return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+  var linkBtn = d.link ? '<button class="btn btn-blue" onclick="doOpenLink(' + idx + ')">🔗 Открыть ссылку</button>' : '';
+  document.getElementById('modal').innerHTML =
+    '<h2>' + getEmoji(d.name) + ' ' + esc(d.name) + '</h2>' +
+    '<div class="modal-sub">Средний интервал: <b>' + avgInterval(d) + ' дн.</b> · Приготовлений: <b>' + ((d.history||[]).length) + '</b><br>Следующий раз: <b>' + fmtRu(n) + '</b> · ' + st.text + '</div>' +
+    (tagsHtml ? '<div class="tags" style="margin-bottom:12px">' + tagsHtml + '</div>' : '') +
+    '<div class="recipe">' + (d.recipe ? esc(d.recipe) : 'Рецепт пока не добавлен') + '</div>' +
+    '<button class="btn btn-green" onclick="doCook(' + idx + ')">✅ Я приготовила сегодня</button>' +
+    '<button class="btn btn-blue" onclick="doCookTomorrow(' + idx + ')">📅 Готовить завтра</button>' +
+    '<button class="btn btn-orange" onclick="showPostpone(' + idx + ')">⏸ Отложить</button>' +
+    linkBtn +
+    '<button class="btn btn-gray" onclick="showEdit(' + idx + ')">✏️ Редактировать</button>' +
+    '<button class="btn btn-red" onclick="doDelete(' + idx + ')">🗑 Удалить</button>' +
+    '<button class="btn btn-gray" onclick="closeModal()" style="margin-top:8px">Отмена</button>';
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function showPostpone(idx){
+  document.getElementById('modal').innerHTML =
+    '<h2>⏸ Отложить</h2>' +
+    '<div class="modal-sub">' + esc(dishes[idx].name) + ' — на сколько дней?</div>' +
+    '<button class="btn btn-gray" onclick="doPostpone(' + idx + ',1)">На 1 день (завтра)</button>' +
+    '<button class="btn btn-gray" onclick="doPostpone(' + idx + ',3)">На 3 дня</button>' +
+    '<button class="btn btn-gray" onclick="doPostpone(' + idx + ',7)">На неделю</button>' +
+    '<button class="btn btn-gray" onclick="doPostpone(' + idx + ',14)">На 2 недели</button>' +
+    '<button class="btn btn-gray" onclick="doPostpone(' + idx + ',30)">На месяц</button>' +
+    '<button class="btn btn-blue" onclick="openDish(' + idx + ')" style="margin-top:8px">← Назад</button>';
+}
+
+function showEdit(idx){
+  var d = dishes[idx];
+  var tagsStr = (d.tags||[]).join(', ');
+  document.getElementById('modal').innerHTML =
+    '<h2>✏️ Редактировать</h2>' +
+    '<label class="form-label">Название</label>' +
+    '<input class="form-input" id="eName" value="' + esc(d.name) + '">' +
+    '<label class="form-label">Интервал (дней)</label>' +
+    '<input class="form-input" id="eInt" type="number" value="' + (d.interval||30) + '">' +
+    '<label class="form-label">Рецепт</label>' +
+    '<textarea class="form-textarea" id="eRec">' + esc(d.recipe||'') + '</textarea>' +
+    '<label class="form-label">Ссылка</label>' +
+    '<input class="form-input" id="eLink" value="' + esc(d.link||'') + '">' +
+    '<label class="form-label">Категории (через запятую)</label>' +
+    '<input class="form-input" id="eTags" value="' + esc(tagsStr) + '">' +
+    '<button class="btn btn-green" onclick="saveEdit(' + idx + ')" style="margin-top:16px">💾 Сохранить</button>' +
+    '<button class="btn btn-gray" onclick="openDish(' + idx + ')">Отмена</button>';
+}
+
+function showAdd(){
+  document.getElementById('modal').innerHTML =
+    '<h2>➕ Новое блюдо</h2>' +
+    '<label class="form-label">Название</label>' +
+    '<input class="form-input" id="aName">' +
+    '<label class="form-label">Интервал (дней)</label>' +
+    '<input class="form-input" id="aInt" type="number" value="30">' +
+    '<label class="form-label">Рецепт</label>' +
+    '<textarea class="form-textarea" id="aRec"></textarea>' +
+    '<label class="form-label">Ссылка</label>' +
+    '<input class="form-input" id="aLink">' +
+    '<label class="form-label">Категории (через запятую)</label>' +
+    '<input class="form-input" id="aTags">' +
+    '<button class="btn btn-green" onclick="saveAdd()" style="margin-top:16px">💾 Сохранить</button>' +
+    '<button class="btn btn-gray" onclick="closeModal()">Отмена</button>';
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function doCook(idx){
+  var todayStr = fmtDate(new Date());
+  if (!dishes[idx].history) dishes[idx].history = [];
+  if (dishes[idx].history.indexOf(todayStr) < 0) dishes[idx].history.push(todayStr);
+  dishes[idx].postponedDate = null;
+  save(); closeModal(); render();
+}
+function doCookTomorrow(idx){
+  var t = new Date(); t.setDate(t.getDate() + 1);
+  dishes[idx].postponedDate = fmtDate(t);
+  save(); closeModal(); render();
+}
+function doPostpone(idx, days){
+  var base = nextDate(dishes[idx]);
+  base.setDate(base.getDate() + days);
+  dishes[idx].postponedDate = fmtDate(base);
+  save(); closeModal(); render();
+}
+function doDelete(idx){
+  if (!confirm('Удалить «' + dishes[idx].name + '»?')) return;
+  dishes.splice(idx, 1);
+  save(); closeModal(); render();
+}
+function doOpenLink(idx){ window.open(dishes[idx].link, '_blank'); }
+
+function saveEdit(idx){
+  dishes[idx].name = document.getElementById('eName').value;
+  dishes[idx].interval = parseInt(document.getElementById('eInt').value) || 30;
+  dishes[idx].recipe = document.getElementById('eRec').value;
+  dishes[idx].link = document.getElementById('eLink').value;
+  dishes[idx].tags = document.getElementById('eTags').value.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s; });
+  save(); closeModal(); render();
+}
+function saveAdd(){
+  var name = document.getElementById('aName').value.trim();
+  if (!name) { alert('Введите название'); return; }
+  dishes.push({
+    name: name,
+    interval: parseInt(document.getElementById('aInt').value) || 30,
+    recipe: document.getElementById('aRec').value,
+    link: document.getElementById('aLink').value,
+    tags: document.getElementById('aTags').value.split(',').map(function(s){ return s.trim(); }).filter(function(s){ return s; }),
+    history: [],
+    postponedDate: null
+  });
+  save(); closeModal(); render();
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('open'); }
+
+document.getElementById('search').addEventListener('input', function(e){ searchQ = e.target.value; render(); });
+var tabs = document.querySelectorAll('.tab');
+for (var i = 0; i < tabs.length; i++) {
+  (function(tab){
+    tab.addEventListener('click', function(){
+      filterKey = tab.getAttribute('data-f');
+      var all = document.querySelectorAll('.tab');
+      for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+      tab.classList.add('active');
+      render();
+    });
+  })(tabs[i]);
+}
+document.getElementById('fab').addEventListener('click', showAdd);
+document.getElementById('modalBg').addEventListener('click', function(e){ if (e.target.id === 'modalBg') closeModal(); });
+
+load();
+render();
+</script>
+</body>
+</html>
