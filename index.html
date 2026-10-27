@@ -57,9 +57,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;backg
 .backup-row{display:flex;gap:6px;margin-top:10px}
 .backup-btn{flex:1;text-align:center;padding:8px 4px;border-radius:11px;background:#E5E5EA;color:#007AFF;font-size:13px;font-weight:500;cursor:pointer;user-select:none}
 .backup-btn:active{background:#D5D5DA}
-.report-day{margin-bottom:16px}
-.report-date{font-size:13px;font-weight:700;color:#007AFF;margin-bottom:6px}
-.report-item{background:#F2F2F7;padding:10px 12px;border-radius:10px;margin-bottom:6px;font-size:16px;display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -94,6 +91,7 @@ function fmtDate(d){ return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + 
 function parseDate(s){ var p = s.split('-'); return new Date(+p[0], +p[1]-1, +p[2]); }
 function today(){ var d = new Date(); d.setHours(0,0,0,0); return d; }
 function fmtRu(d){ var m = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек']; return d.getDate() + ' ' + m[d.getMonth()] + ' ' + d.getFullYear(); }
+function fmtTextDate(d){ var m = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря']; return d.getDate() + ' ' + m[d.getMonth()]; }
 function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
 function load(){
@@ -349,7 +347,7 @@ function doImport(){
   alert('✅ Импортировано: ' + arr.length + ' блюд.');
 }
 
-/* ================= ОТЧЁТ ЗА НЕДЕЛЮ ================= */
+/* ================= ОТЧЁТ ЗА 2 НЕДЕЛИ (ТЕКСТ) ================= */
 function showReport(){
   var events = [];
   dishes.forEach(function(d){
@@ -359,52 +357,59 @@ function showReport(){
       dDate.setHours(0,0,0,0);
       var now = today();
       var diffDays = Math.round((now - dDate) / 86400000);
-      if (diffDays >= 0 && diffDays <= 7) {
-        events.push({ date: dateStr, name: d.name, emoji: getEmoji(d.name) });
+      // Ищем за последние 14 дней
+      if (diffDays >= 0 && diffDays <= 14) {
+        events.push({ date: dateStr, name: d.name });
       }
     });
   });
 
+  var reportText = "";
+
   if (!events.length) {
-    document.getElementById('modal').innerHTML =
-      '<h2>📅 Отчёт за неделю</h2>' +
-      '<div class="modal-sub">За последние 7 дней вы ещё ничего не готовили (или не отмечали).</div>' +
-      '<button class="btn btn-blue" onclick="closeModal()">Закрыть</button>';
-    document.getElementById('modalBg').classList.add('open');
-    return;
+    reportText = "За последние 2 недели ничего не готовилось (или не отмечалось).";
+  } else {
+    events.sort(function(a,b){ return parseDate(b.date) - parseDate(a.date); });
+    var grouped = {};
+    events.forEach(function(ev){
+      if (!grouped[ev.date]) grouped[ev.date] = [];
+      grouped[ev.date].push(ev);
+    });
+
+    reportText = "Что готовилось за последние 2 недели:\n\n";
+    Object.keys(grouped).forEach(function(dateStr){
+      var dDate = parseDate(dateStr);
+      reportText += "📅 " + fmtTextDate(dDate) + ":\n";
+      grouped[dateStr].forEach(function(ev){
+        reportText += "- " + ev.name + "\n";
+      });
+      reportText += "\n";
+    });
   }
 
-  events.sort(function(a,b){ return parseDate(b.date) - parseDate(a.date); });
-  var grouped = {};
-  events.forEach(function(ev){
-    if (!grouped[ev.date]) grouped[ev.date] = [];
-    grouped[ev.date].push(ev);
-  });
-
-  var h = '<h2>📅 Отчёт за неделю</h2><div class="modal-sub">Что вы готовили за последние 7 дней</div>';
-  var dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
-  
-  Object.keys(grouped).forEach(function(dateStr){
-    var dDate = parseDate(dateStr);
-    var todayStr = fmtDate(today());
-    var yest = new Date(today()); yest.setDate(yest.getDate() - 1);
-    var yestStr = fmtDate(yest);
-    var title = '';
-    if (dateStr === todayStr) title = 'Сегодня';
-    else if (dateStr === yestStr) title = 'Вчера';
-    else title = dayNames[dDate.getDay()] + ', ' + dDate.getDate() + ' ' + ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'][dDate.getMonth()];
-    
-    h += '<div class="report-day">';
-    h += '<div class="report-date">' + title + '</div>';
-    grouped[dateStr].forEach(function(ev){
-      h += '<div class="report-item">' + ev.emoji + ' ' + esc(ev.name) + '</div>';
-    });
-    h += '</div>';
-  });
-
-  h += '<button class="btn btn-blue" onclick="closeModal()" style="margin-top:16px">Закрыть</button>';
-  document.getElementById('modal').innerHTML = h;
+  document.getElementById('modal').innerHTML =
+    '<h2>📅 Отчёт за 2 недели</h2>' +
+    '<div class="modal-sub">Текст готов для копирования и вставки в ИИ.</div>' +
+    '<textarea class="form-textarea" id="repText" style="min-height:250px;font-family:inherit;font-size:15px">' + esc(reportText) + '</textarea>' +
+    '<button class="btn btn-blue" onclick="copyReport()">📋 Копировать текст</button>' +
+    '<button class="btn btn-gray" onclick="closeModal()">Закрыть</button>';
   document.getElementById('modalBg').classList.add('open');
+}
+
+function copyReport(){
+  var t = document.getElementById('repText');
+  t.focus(); t.select(); t.setSelectionRange(0, 999999);
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  if (ok) { alert('✅ Скопировано в буфер обмена.'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(t.value).then(
+      function(){ alert('✅ Скопировано в буфер обмена.'); },
+      function(){ alert('Текст уже выделен — нажмите «Копировать» в меню.'); }
+    );
+    return;
+  }
+  alert('Текст выделен. Нажмите «Копировать» в меню.');
 }
 
 function doCook(idx){
