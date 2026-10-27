@@ -54,9 +54,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;backg
 .form-input,.form-textarea{width:100%;padding:13px;border-radius:12px;border:1.5px solid #E5E5EA;font-size:16px;font-family:inherit;outline:none;background:#fff;color:#000}
 .form-input:focus,.form-textarea:focus{border-color:#007AFF}
 .form-textarea{min-height:140px;line-height:1.5;resize:vertical}
-.backup-row{display:flex;gap:8px;margin-top:10px}
-.backup-btn{flex:1;text-align:center;padding:8px 10px;border-radius:11px;background:#E5E5EA;color:#007AFF;font-size:14px;font-weight:500;cursor:pointer;user-select:none}
+.backup-row{display:flex;gap:6px;margin-top:10px}
+.backup-btn{flex:1;text-align:center;padding:8px 4px;border-radius:11px;background:#E5E5EA;color:#007AFF;font-size:13px;font-weight:500;cursor:pointer;user-select:none}
 .backup-btn:active{background:#D5D5DA}
+.report-day{margin-bottom:16px}
+.report-date{font-size:13px;font-weight:700;color:#007AFF;margin-bottom:6px}
+.report-item{background:#F2F2F7;padding:10px 12px;border-radius:10px;margin-bottom:6px;font-size:16px;display:flex;align-items:center;gap:8px}
 </style>
 </head>
 <body>
@@ -73,6 +76,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;backg
   <div class="backup-row">
     <div class="backup-btn" id="expBtn">📤 Экспорт</div>
     <div class="backup-btn" id="impBtn">📥 Импорт</div>
+    <div class="backup-btn" id="repBtn" style="color:#FF9500">📅 Отчёт</div>
   </div>
 </div>
 <div id="list"></div>
@@ -260,102 +264,66 @@ function showAdd(){
   document.getElementById('modalBg').classList.add('open');
 }
 
-/* ================= ЭКСПОРТ / ИМПОРТ ================= */
+/* ================= ОТЧЁТ ЗА НЕДЕЛЮ ================= */
+function showReport(){
+  var events = [];
+  dishes.forEach(function(d){
+    if (!d.history) return;
+    d.history.forEach(function(dateStr){
+      var dDate = parseDate(dateStr);
+      dDate.setHours(0,0,0,0);
+      var now = today();
+      var diffDays = Math.round((now - dDate) / 86400000);
+      if (diffDays >= 0 && diffDays <= 7) {
+        events.push({ date: dateStr, name: d.name, emoji: getEmoji(d.name) });
+      }
+    });
+  });
 
-function showExport(){
-  var json = JSON.stringify(dishes, null, 2);
-  document.getElementById('modal').innerHTML =
-    '<h2>📤 Экспорт — резервная копия</h2>' +
-    '<div class="modal-sub">Скопируйте текст и сохраните его в Заметках, отправьте себе в Телеграм или на почту. Если данные когда-нибудь потеряются — через «Импорт» восстановите всё.</div>' +
-    '<textarea class="form-textarea" id="expText" style="min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px">' + esc(json) + '</textarea>' +
-    '<button class="btn btn-blue" onclick="copyExport()">📋 Копировать в буфер</button>' +
-    '<button class="btn btn-green" onclick="downloadExport()">💾 Скачать файлом</button>' +
-    '<button class="btn btn-gray" onclick="closeModal()">Закрыть</button>';
-  document.getElementById('modalBg').classList.add('open');
-}
-
-function copyExport(){
-  var t = document.getElementById('expText');
-  t.focus(); t.select(); t.setSelectionRange(0, 999999);
-  var ok = false;
-  try { ok = document.execCommand('copy'); } catch(e) {}
-  if (ok) { alert('✅ Скопировано в буфер обмена.\nВставьте в Заметки или куда вам удобно.'); return; }
-  if (navigator.clipboard) {
-    navigator.clipboard.writeText(t.value).then(
-      function(){ alert('✅ Скопировано в буфер обмена.'); },
-      function(){ alert('Не получилось автоматически. Текст уже выделен — нажмите «Копировать» в появившемся меню.'); }
-    );
+  if (!events.length) {
+    document.getElementById('modal').innerHTML =
+      '<h2>📅 Отчёт за неделю</h2>' +
+      '<div class="modal-sub">За последние 7 дней вы ещё ничего не готовили (или не отмечали в приложении).</div>' +
+      '<button class="btn btn-blue" onclick="closeModal()">Закрыть</button>';
+    document.getElementById('modalBg').classList.add('open');
     return;
   }
-  alert('Текст выделен. Нажмите «Копировать» в меню, которое появилось.');
-}
 
-function downloadExport(){
-  try {
-    var json = JSON.stringify(dishes, null, 2);
-    var blob = new Blob([json], { type: 'application/json' });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'menu-backup-' + fmtDate(new Date()) + '.json';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-    alert('Файл сохранён в «Файлы» → «Загрузки».');
-  } catch(e) {
-    alert('Не удалось скачать. Используйте «Копировать в буфер».');
-  }
-}
+  events.sort(function(a,b){ return parseDate(b.date) - parseDate(a.date); });
 
-function showImport(){
-  document.getElementById('modal').innerHTML =
-    '<h2>📥 Импорт — восстановление</h2>' +
-    '<div class="modal-sub">Вставьте сохранённый текст в поле ниже и нажмите «Загрузить».<br><b>Внимание:</b> все текущие блюда будут заменены данными из файла.</div>' +
-    '<textarea class="form-textarea" id="impText" style="min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px" placeholder="Вставьте сохранённый JSON здесь"></textarea>' +
-    '<button class="btn btn-blue" onclick="pasteImport()">📋 Вставить из буфера</button>' +
-    '<button class="btn btn-green" onclick="doImport()">💾 Загрузить и заменить</button>' +
-    '<button class="btn btn-gray" onclick="closeModal()">Отмена</button>';
+  var grouped = {};
+  events.forEach(function(ev){
+    if (!grouped[ev.date]) grouped[ev.date] = [];
+    grouped[ev.date].push(ev);
+  });
+
+  var h = '<h2>📅 Отчёт за неделю</h2><div class="modal-sub">Что вы готовили за последние 7 дней</div>';
+  var dayNames = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  
+  Object.keys(grouped).forEach(function(dateStr){
+    var dDate = parseDate(dateStr);
+    var todayStr = fmtDate(today());
+    var yest = new Date(today()); yest.setDate(yest.getDate() - 1);
+    var yestStr = fmtDate(yest);
+    
+    var title = '';
+    if (dateStr === todayStr) title = 'Сегодня';
+    else if (dateStr === yestStr) title = 'Вчера';
+    else title = dayNames[dDate.getDay()] + ', ' + dDate.getDate() + ' ' + ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'][dDate.getMonth()];
+    
+    h += '<div class="report-day">';
+    h += '<div class="report-date">' + title + '</div>';
+    grouped[dateStr].forEach(function(ev){
+      h += '<div class="report-item">' + ev.emoji + ' ' + esc(ev.name) + '</div>';
+    });
+    h += '</div>';
+  });
+
+  h += '<button class="btn btn-blue" onclick="closeModal()" style="margin-top:16px">Закрыть</button>';
+  
+  document.getElementById('modal').innerHTML = h;
   document.getElementById('modalBg').classList.add('open');
 }
-
-function pasteImport(){
-  if (navigator.clipboard) {
-    navigator.clipboard.readText().then(
-      function(text){
-        if (text) {
-          document.getElementById('impText').value = text;
-          alert('Вставлено. Проверьте и нажмите «Загрузить и заменить».');
-        } else {
-          alert('Буфер пуст. Нажмите на поле и выберите «Вставить» вручную.');
-        }
-      },
-      function(){ alert('Нет доступа к буферу. Нажмите на поле и выберите «Вставить» вручную.'); }
-    );
-  } else {
-    alert('Нажмите на поле и выберите «Вставить» вручную.');
-  }
-}
-
-function doImport(){
-  var raw = document.getElementById('impText').value.trim();
-  if (!raw) { alert('Поле пустое. Вставьте сохранённый текст.'); return; }
-  var arr;
-  try {
-    arr = JSON.parse(raw);
-  } catch(e) {
-    alert('Не получилось прочитать данные. Убедитесь, что скопировали текст целиком — от первой { до последней }.');
-    return;
-  }
-  if (!Array.isArray(arr)) { alert('Это не похоже на резервную копию.'); return; }
-  if (!confirm('Заменить текущие ' + dishes.length + ' блюд на ' + arr.length + ' из копии?')) return;
-  dishes = arr;
-  save();
-  closeModal();
-  render();
-  alert('✅ Импортировано: ' + arr.length + ' блюд.');
-}
-
 /* ==================================================== */
 
 function doCook(idx){
@@ -423,6 +391,7 @@ for (var i = 0; i < tabs.length; i++) {
 document.getElementById('fab').addEventListener('click', showAdd);
 document.getElementById('expBtn').addEventListener('click', showExport);
 document.getElementById('impBtn').addEventListener('click', showImport);
+document.getElementById('repBtn').addEventListener('click', showReport);
 document.getElementById('modalBg').addEventListener('click', function(e){ if (e.target.id === 'modalBg') closeModal(); });
 
 load();
