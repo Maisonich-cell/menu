@@ -264,6 +264,91 @@ function showAdd(){
   document.getElementById('modalBg').classList.add('open');
 }
 
+/* ================= ЭКСПОРТ / ИМПОРТ ================= */
+function showExport(){
+  var json = JSON.stringify(dishes, null, 2);
+  document.getElementById('modal').innerHTML =
+    '<h2>📤 Экспорт — резервная копия</h2>' +
+    '<div class="modal-sub">Скопируйте текст и сохраните в Заметках или отправьте себе. Если данные потеряются — через «Импорт» восстановите.</div>' +
+    '<textarea class="form-textarea" id="expText" style="min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px">' + esc(json) + '</textarea>' +
+    '<button class="btn btn-blue" onclick="copyExport()">📋 Копировать в буфер</button>' +
+    '<button class="btn btn-green" onclick="downloadExport()">💾 Скачать файлом</button>' +
+    '<button class="btn btn-gray" onclick="closeModal()">Закрыть</button>';
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function copyExport(){
+  var t = document.getElementById('expText');
+  t.focus(); t.select(); t.setSelectionRange(0, 999999);
+  var ok = false;
+  try { ok = document.execCommand('copy'); } catch(e) {}
+  if (ok) { alert('✅ Скопировано в буфер обмена.\nВставьте в Заметки или куда вам удобно.'); return; }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(t.value).then(
+      function(){ alert('✅ Скопировано в буфер обмена.'); },
+      function(){ alert('Текст уже выделен — нажмите «Копировать» в меню.'); }
+    );
+    return;
+  }
+  alert('Текст выделен. Нажмите «Копировать» в меню.');
+}
+
+function downloadExport(){
+  try {
+    var json = JSON.stringify(dishes, null, 2);
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'menu-backup-' + fmtDate(new Date()) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    alert('Файл сохранён в «Файлы» → «Загрузки».');
+  } catch(e) {
+    alert('Не удалось скачать. Используйте «Копировать в буфер».');
+  }
+}
+
+function showImport(){
+  document.getElementById('modal').innerHTML =
+    '<h2>📥 Импорт — восстановление</h2>' +
+    '<div class="modal-sub">Вставьте сохранённый текст в поле ниже и нажмите «Загрузить».<br><b>Внимание:</b> все текущие блюда будут заменены.</div>' +
+    '<textarea class="form-textarea" id="impText" style="min-height:200px;font-family:ui-monospace,Menlo,monospace;font-size:12px" placeholder="Вставьте сохранённый JSON здесь"></textarea>' +
+    '<button class="btn btn-blue" onclick="pasteImport()">📋 Вставить из буфера</button>' +
+    '<button class="btn btn-green" onclick="doImport()">💾 Загрузить и заменить</button>' +
+    '<button class="btn btn-gray" onclick="closeModal()">Отмена</button>';
+  document.getElementById('modalBg').classList.add('open');
+}
+
+function pasteImport(){
+  if (navigator.clipboard) {
+    navigator.clipboard.readText().then(
+      function(text){
+        if (text) {
+          document.getElementById('impText').value = text;
+          alert('Вставлено. Нажмите «Загрузить и заменить».');
+        } else { alert('Буфер пуст.'); }
+      },
+      function(){ alert('Нет доступа к буферу. Нажмите на поле и выберите «Вставить» вручную.'); }
+    );
+  } else {
+    alert('Нажмите на поле и выберите «Вставить» вручную.');
+  }
+}
+
+function doImport(){
+  var raw = document.getElementById('impText').value.trim();
+  if (!raw) { alert('Поле пустое.'); return; }
+  var arr;
+  try { arr = JSON.parse(raw); } catch(e) { alert('Ошибка чтения данных.'); return; }
+  if (!Array.isArray(arr)) { alert('Это не похоже на резервную копию.'); return; }
+  if (!confirm('Заменить текущие ' + dishes.length + ' блюд на ' + arr.length + ' из копии?')) return;
+  dishes = arr; save(); closeModal(); render();
+  alert('✅ Импортировано: ' + arr.length + ' блюд.');
+}
+
 /* ================= ОТЧЁТ ЗА НЕДЕЛЮ ================= */
 function showReport(){
   var events = [];
@@ -283,14 +368,13 @@ function showReport(){
   if (!events.length) {
     document.getElementById('modal').innerHTML =
       '<h2>📅 Отчёт за неделю</h2>' +
-      '<div class="modal-sub">За последние 7 дней вы ещё ничего не готовили (или не отмечали в приложении).</div>' +
+      '<div class="modal-sub">За последние 7 дней вы ещё ничего не готовили (или не отмечали).</div>' +
       '<button class="btn btn-blue" onclick="closeModal()">Закрыть</button>';
     document.getElementById('modalBg').classList.add('open');
     return;
   }
 
   events.sort(function(a,b){ return parseDate(b.date) - parseDate(a.date); });
-
   var grouped = {};
   events.forEach(function(ev){
     if (!grouped[ev.date]) grouped[ev.date] = [];
@@ -305,7 +389,6 @@ function showReport(){
     var todayStr = fmtDate(today());
     var yest = new Date(today()); yest.setDate(yest.getDate() - 1);
     var yestStr = fmtDate(yest);
-    
     var title = '';
     if (dateStr === todayStr) title = 'Сегодня';
     else if (dateStr === yestStr) title = 'Вчера';
@@ -320,11 +403,9 @@ function showReport(){
   });
 
   h += '<button class="btn btn-blue" onclick="closeModal()" style="margin-top:16px">Закрыть</button>';
-  
   document.getElementById('modal').innerHTML = h;
   document.getElementById('modalBg').classList.add('open');
 }
-/* ==================================================== */
 
 function doCook(idx){
   var todayStr = fmtDate(new Date());
